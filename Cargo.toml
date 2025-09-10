@@ -7,3 +7,4 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
+geo = "0.31.0"
