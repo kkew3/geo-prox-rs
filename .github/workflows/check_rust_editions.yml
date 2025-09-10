@@ -1,0 +1,60 @@
+name: Check Rust editions
+
+on:
+  pull_request:
+    paths:
+      - 'Cargo.toml'
+      - 'rustfmt.toml'
+  push:
+    paths:
+      - 'Cargo.toml'
+      - 'rustfmt.toml'
+  workflow_dispatch:
+
+jobs:
+  check-rust-editions:
+    name: Ensure Rust edition setting is consistent across configs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check whether rustfmt config exists
+        id: rustfmt_exists
+        run: |
+          if [ -f rustfmt.toml ]; then
+            echo "rustfmt_config=rustfmt.toml" >> $GITHUB_OUTPUT
+          elif [ -f .rustfmt.toml ]; then
+            echo "rustfmt_config=.rustfmt.toml" >> $GITHUB_OUTPUT
+          else
+            echo "rustfmt_config=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        if: ${{ steps.rustfmt_exists.outputs.rustfmt_config != '' }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        if: ${{ steps.rustfmt_exists.outputs.rustfmt_config != '' }}
+
+      - name: Install toml2json and jq
+        run: |
+          cargo install --git https://github.com/kkew3/toml2json.git
+          sudo apt-get update
+          sudo apt-get install -y jq
+        if: ${{ steps.rustfmt_exists.outputs.rustfmt_config != '' }}
+
+      - name: Assert package edition equals rustfmt editions
+        if: ${{ steps.rustfmt_exists.outputs.rustfmt_config != '' }}
+        run: |
+          cargo_edition="$(toml2json Cargo.toml | jq -r .package.edition)"
+          rustfmt_edition="$( { toml2json ${{ steps.rustfmt_exists.outputs.rustfmt_config }} | jq -r .edition; } 2> /dev/null || true)"
+          if [ -n "$rustfmt_edition" ] && [ "$cargo_edition" != "$rustfmt_edition" ]; then
+            echo "::error rustfmt.toml edition differs from Cargo.toml edition"
+            exit 1
+          fi
+          rustfmt_style_edition="$( { toml2json ${{ steps.rustfmt_exists.outputs.rustfmt_config }} | jq -r .style_edition; } 2> /dev/null || true)"
+          if [ -n "$rustfmt_style_edition" ] && [ "$cargo_edition" != "$rustfmt_style_edition" ]; then
+            echo "::error rustfmt.toml style_edition differs from Cargo.toml edition"
+            exit 1
+          fi

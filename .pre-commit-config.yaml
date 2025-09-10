@@ -1,0 +1,19 @@
+repos:
+  - repo: local
+    hooks:
+      - id: taplo-format
+        name: Check formatting of rust manifest with taplo-cli
+        entry: taplo fmt --check
+        language: system
+        files: Cargo.toml
+      - id: cargo-check
+        name: Cargo check
+        entry: cargo check --all-targets
+        language: system
+        pass_filenames: false
+        types: [rust]
+      - id: rustfmt
+        name: Check formatting of rust code
+        entry: rustfmt --check
+        language: system
+        types: [rust]

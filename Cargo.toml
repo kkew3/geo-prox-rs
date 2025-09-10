@@ -1,0 +1,9 @@
+[package]
+name = "geo-prox"
+version = "0.1.0"
+edition = "2021"
+description = "A really simple rust library that tells whether two GPS points are close to each other"
+readme = "README.md"
+license = "MIT"
+
+[dependencies]
