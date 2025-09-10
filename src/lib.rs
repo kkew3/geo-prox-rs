@@ -5,13 +5,15 @@
 //! Usage:
 //!
 //! ```
-//! use geo::{Point, Geodesic};
+//! use geo_types::Point;
 //! let p1 = Point::new(23.319941, 42.698334);
 //! let p2 = Point::new(23.319920, 42.698323);
-//! assert!(geo_prox::isclose(p1, p2, 15.0, &Geodesic, None, None));
+//! assert_eq!(geo_prox::isclose_opt(p1, p2, 15.0, None, None), Some(true));
 //! ```
 
-use geo::{CoordFloat, Distance, GeodesicMeasure, Point};
+#[cfg(feature = "geo")]
+use geo::{Distance, GeodesicMeasure};
+use geo_types::{CoordFloat, Point};
 
 /// WGS84 ellipsoid constants. See https://en.wikipedia.org/wiki/Flattening for
 /// details.
@@ -93,6 +95,7 @@ const fn err_is_tiny(err: f64, b: f64, a_tol: f64, r_tol: f64) -> bool {
 ///
 /// We have to stick to f64 because [`geo::GeodesicMeasure`] only implements
 /// [`Distance`](geo::algorithm::line_measures::Distance) on f64.
+#[cfg(feature = "geo")]
 pub fn isclose(
     p1: Point<f64>,
     p2: Point<f64>,
@@ -129,14 +132,67 @@ pub fn isclose(
     }
 }
 
+/// Test whether two points (longitude, latitude) in degrees are within
+/// `radius` meters in geodesic distance. Instead of running full geodesic
+/// distance, we test the proximity with the chord distance lower bound. At
+/// scale of a few hundred meters of `radius`, the error is tiny. Return None
+/// if `radius` is too large to make the chord distance a tight enough bound.
+/// Whether `radius` is regarded as "too large" is decided by the absolute
+/// tolerance `a_tol` and relative tolerance `r_tol`. Passing None to use the
+/// default tolerances, which are sensible for most use cases.
+///
+/// # Accepted coordinate value
+///
+/// - longitude: -180.0..=180.0, negative for west, positive for east.
+/// - latitude: -90.0..=90.0, negative for south, positive for north.
+///
+/// # Notes on coordinate type
+///
+/// We have to stick to f64 because [`geo::GeodesicMeasure`] only implements
+/// [`Distance`](geo::algorithm::line_measures::Distance) on f64.
+pub fn isclose_opt(
+    p1: Point<f64>,
+    p2: Point<f64>,
+    radius: f64,
+    a_tol: Option<f64>,
+    r_tol: Option<f64>,
+) -> Option<bool> {
+    // The absolute tolerance, default taken from numpy.
+    let a_tol = a_tol.unwrap_or(1e-8);
+    // The relative tolerance, default taken from numpy.
+    let r_tol = r_tol.unwrap_or(1e-5);
+
+    let ecef_p1: Ecef<_> = p1.into();
+    let ecef_p2: Ecef<_> = p2.into();
+    let d_c = ecef_p1.chord_distance(ecef_p2);
+
+    // If chord distance already exeeds `radius`, `p1` and `p2` are definitely
+    // not close.
+    if d_c > radius {
+        return Some(false);
+    }
+
+    let err_upper_bound = max_geodesic_minus_chord_bound(d_c);
+    let geodesic_upper_bound = d_c + err_upper_bound;
+    if !err_is_tiny(err_upper_bound, geodesic_upper_bound, a_tol, r_tol) {
+        // The chord distance is not a tight approximation. Thus, we choose to
+        // abstain.
+        None
+    } else {
+        // Trade off a little bit precision for speed. The loss in precision,
+        // though, should be negligible under sensible `a_tol` and `r_tol`.
+        Some(true)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use geo::{Geodesic, Point};
+    use geo_types::Point;
 
     #[test]
     fn test_isclose() {
         let p1 = Point::new(23.319941, 42.698334);
         let p2 = Point::new(23.319920, 42.698323);
-        assert!(super::isclose(p1, p2, 15.0, &Geodesic, None, None));
+        assert_eq!(super::isclose_opt(p1, p2, 15.0, None, None), Some(true));
     }
 }
