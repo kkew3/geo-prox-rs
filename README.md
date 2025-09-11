@@ -30,5 +30,5 @@ assert_eq!(
 
 ## Benchmark
 
-Evaluating the bound is on average 85% faster than exact geodesic distance evaluation, and the bound is *always* tight at small scale (e.g. 1 km).
+Evaluating the bound is on average 85% faster than exact geodesic distance evaluation, and the bound is *always* tight at small scale (e.g. when radius <= 1 km).
 Therefore, this crate is particularly useful to detect near-duplicate location in applications handling geographical data.
