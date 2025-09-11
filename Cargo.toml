@@ -22,3 +22,7 @@ geo = ["dep:geo"]
 
 [[test]]
 name = "grid_test"
+
+[[bench]]
+name = "chord_bound"
+harness = false
