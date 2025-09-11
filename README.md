@@ -24,6 +24,14 @@ assert_eq!(
 );
 ```
 
+## Installation
+
+Run in shell:
+
+```bash
+cargo add --git https://github.com/kkew3/geo-prox-rs.git geo-prox
+```
+
 ## Feature flags
 
 - `geo`: Enable to resort to exact geodesic distance when the bound is loose (default disbaled).
