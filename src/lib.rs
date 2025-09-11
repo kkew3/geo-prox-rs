@@ -22,7 +22,7 @@
 //! ```
 
 #[cfg(feature = "geo")]
-use geo::{Distance, GeodesicMeasure};
+use geo::{Distance, Geodesic};
 use geo_types::{CoordFloat, Point};
 
 /// WGS84 ellipsoid constants. See https://en.wikipedia.org/wiki/Flattening for
@@ -139,13 +139,12 @@ pub fn isclose(
     p1: Point<f64>,
     p2: Point<f64>,
     radius: f64,
-    fallback_dist: &GeodesicMeasure,
     a_tol: f64,
     r_tol: f64,
     default: bool,
 ) -> bool {
     isclose_opt(p1, p2, radius, a_tol, r_tol, default)
-        .unwrap_or_else(|| fallback_dist.distance(p1, p2) <= radius)
+        .unwrap_or_else(|| Geodesic.distance(p1, p2) <= radius)
 }
 
 /// Test whether two points (longitude, latitude) in degrees are within

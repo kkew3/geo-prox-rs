@@ -95,7 +95,6 @@ fn isclose_grid_test() {
                             src,
                             dst,
                             radius,
-                            &Geodesic,
                             geo_prox::A_TOL,
                             geo_prox::R_TOL,
                             true,
