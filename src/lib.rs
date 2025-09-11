@@ -181,6 +181,9 @@ pub fn isclose_opt(
         // definitely not close.
         Some(false)
     } else if ub <= radius {
+        // This branch is in practice not that useful. If the bounds are tight,
+        // then lb ~= ub, and the test on ub reduces to test on lb (previous
+        // branch). Otherwise, we will need to abstain (next branch).
         Some(true)
     } else if !err_is_tiny(ub - lb, ub, a_tol, r_tol) {
         // The bound is too loose. We choose to abstain.
