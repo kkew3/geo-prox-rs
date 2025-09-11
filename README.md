@@ -1,4 +1,4 @@
-# geo-prox-rs
+# geo-prox
 
 A really simple and fast rust library that tells whether two GPS points are close to each other by leveraging cheap lower bound of the otherwise expensive geodesic distance evaluation.
 
