@@ -36,7 +36,7 @@ jobs:
         run: taplo fmt --check Cargo.toml
 
       - name: Check compilation
-        run: cargo check --workspace --all-targets
+        run: cargo check --all-targets --all-features
 
       - name: Run tests
-        run: cargo test --workspace --all-targets
+        run: cargo test --all-targets --release
