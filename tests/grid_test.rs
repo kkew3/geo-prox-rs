@@ -38,6 +38,44 @@ fn bound_grid_test() {
     }
 }
 
+/// Ensure the bounds are tight at small scale (1000 meters) and get loose at
+/// large scale.
+#[test]
+fn bound_tightness_grid_test() {
+    let lons = linspace(-180.0, 180.0, 37);
+    let lats = linspace(-90.0, 90.0, 19);
+    for lon in lons.iter().copied() {
+        for lat in lats.iter().copied() {
+            let src = Point::new(lon, lat);
+            for bearing in linspace(0.0, 360.0, 36) {
+                let mut all_results = Vec::new();
+                for log_distance in linspace(-2.0, 7.0, 50) {
+                    let distance = 10f64.powf(log_distance);
+                    let dst = Geodesic.destination(src, bearing, distance);
+                    for log_radius in linspace(-3.0, 8.0, 50) {
+                        let radius = 10f64.powf(log_radius);
+                        let close = geo_prox::isclose_opt(
+                            src,
+                            dst,
+                            radius,
+                            geo_prox::A_TOL,
+                            geo_prox::R_TOL,
+                            true,
+                        );
+                        // Radius <= 1000 meters.
+                        if log_radius <= 3.0 {
+                            assert!(close.is_some());
+                        }
+                        all_results.push(close);
+                    }
+                }
+                // Assert that at some large scale the bounds get loose.
+                assert!(all_results.iter().any(Option::is_none));
+            }
+        }
+    }
+}
+
 /// Run isclose correctness test on grid over the globe.
 #[cfg(feature = "geo")]
 #[test]
