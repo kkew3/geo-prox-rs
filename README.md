@@ -17,7 +17,7 @@ assert_eq!(
 );
 // Two far apart points.
 let p1 = Point::new(23.319941, 42.698334);
-let p2 = Point::new(25.319920, 42.698323);
+let p2 = Point::new(-25.319920, -42.698323); // negative for (west, south)
 assert_eq!(
     geo_prox::isclose_opt(p1, p2, 15.0, A_TOL, R_TOL, true),
     Some(false)
