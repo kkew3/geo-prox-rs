@@ -76,6 +76,28 @@ const fn err_is_tiny(err: f64, b: f64, a_tol: f64, r_tol: f64) -> bool {
     err <= a_tol + r_tol * b
 }
 
+/// Return a lower bound and an optional upper bound of the geodesic distance
+/// between two points (longitude, latitude) in degrees. If the lower bound is
+/// greater than `radius`, only the lower bound will be returned; otherwise,
+/// both bounds will be returned. Set `radius` to infinity if one wants to
+/// ensure the upper bound is not None.
+pub fn geodesic_distance_bound(
+    p1: Point<f64>,
+    p2: Point<f64>,
+    radius: f64,
+) -> (f64, Option<f64>) {
+    let ecef_p1: Ecef<_> = p1.into();
+    let ecef_p2: Ecef<_> = p2.into();
+    let d_c = ecef_p1.chord_distance(ecef_p2);
+
+    if d_c > radius {
+        (d_c, None)
+    } else {
+        let err_upper_bound = max_geodesic_minus_chord_bound(d_c);
+        (d_c, Some(d_c + err_upper_bound))
+    }
+}
+
 /// Test whether two points (longitude, latitude) in degrees are within
 /// `radius` meters in geodesic distance. Instead of running full geodesic
 /// distance, we test the proximity with the chord distance lower bound. At
@@ -104,31 +126,31 @@ pub fn isclose(
     a_tol: Option<f64>,
     r_tol: Option<f64>,
 ) -> bool {
-    // The absolute tolerance, default taken from numpy.
-    let a_tol = a_tol.unwrap_or(1e-8);
-    // The relative tolerance, default taken from numpy.
-    let r_tol = r_tol.unwrap_or(1e-5);
+    let (lb, ub_opt) = geodesic_distance_bound(p1, p2, radius);
 
-    let ecef_p1: Ecef<_> = p1.into();
-    let ecef_p2: Ecef<_> = p2.into();
-    let d_c = ecef_p1.chord_distance(ecef_p2);
+    match ub_opt {
+        None => {
+            // If the lower bound already exeeds `radius`, `p1` and `p2` are
+            // definitely not close.
+            false
+        }
+        Some(ub) => {
+            // The absolute tolerance, default taken from numpy.
+            let a_tol = a_tol.unwrap_or(1e-8);
+            // The relative tolerance, default taken from numpy.
+            let r_tol = r_tol.unwrap_or(1e-5);
 
-    // If chord distance already exeeds `radius`, `p1` and `p2` are definitely
-    // not close.
-    if d_c > radius {
-        return false;
-    }
-
-    let err_upper_bound = max_geodesic_minus_chord_bound(d_c);
-    let geodesic_upper_bound = d_c + err_upper_bound;
-    if !err_is_tiny(err_upper_bound, geodesic_upper_bound, a_tol, r_tol) {
-        // The chord distance is not a tight approximation. We have to resort
-        // to the fallback distance.
-        fallback_dist.distance(p1, p2) <= radius
-    } else {
-        // Trade off a little bit precision for speed. The loss in precision,
-        // though, should be negligible under sensible `a_tol` and `r_tol`.
-        true
+            if !err_is_tiny(ub - lb, ub, a_tol, r_tol) {
+                // The bound is too loose. We have to resort to the exact
+                // distance measure.
+                fallback_dist.distance(p1, p2) <= radius
+            } else {
+                // Trade off a little bit precision for speed, as the bound is
+                // tight enough, assuming that `a_tol` and `r_tol` values are
+                // sensible.
+                true
+            }
+        }
     }
 }
 
@@ -157,31 +179,30 @@ pub fn isclose_opt(
     a_tol: Option<f64>,
     r_tol: Option<f64>,
 ) -> Option<bool> {
-    // The absolute tolerance, default taken from numpy.
-    let a_tol = a_tol.unwrap_or(1e-8);
-    // The relative tolerance, default taken from numpy.
-    let r_tol = r_tol.unwrap_or(1e-5);
+    let (lb, ub_opt) = geodesic_distance_bound(p1, p2, radius);
 
-    let ecef_p1: Ecef<_> = p1.into();
-    let ecef_p2: Ecef<_> = p2.into();
-    let d_c = ecef_p1.chord_distance(ecef_p2);
+    match ub_opt {
+        None => {
+            // If the lower bound already exeeds `radius`, `p1` and `p2` are
+            // definitely not close.
+            Some(false)
+        }
+        Some(ub) => {
+            // The absolute tolerance, default taken from numpy.
+            let a_tol = a_tol.unwrap_or(1e-8);
+            // The relative tolerance, default taken from numpy.
+            let r_tol = r_tol.unwrap_or(1e-5);
 
-    // If chord distance already exeeds `radius`, `p1` and `p2` are definitely
-    // not close.
-    if d_c > radius {
-        return Some(false);
-    }
-
-    let err_upper_bound = max_geodesic_minus_chord_bound(d_c);
-    let geodesic_upper_bound = d_c + err_upper_bound;
-    if !err_is_tiny(err_upper_bound, geodesic_upper_bound, a_tol, r_tol) {
-        // The chord distance is not a tight approximation. Thus, we choose to
-        // abstain.
-        None
-    } else {
-        // Trade off a little bit precision for speed. The loss in precision,
-        // though, should be negligible under sensible `a_tol` and `r_tol`.
-        Some(true)
+            if !err_is_tiny(ub - lb, ub, a_tol, r_tol) {
+                // The bound is too loose. We choose to abstain.
+                None
+            } else {
+                // Trade off a little bit precision for speed, as the bound is
+                // tight enough, assuming that `a_tol` and `r_tol` values are
+                // sensible.
+                Some(true)
+            }
+        }
     }
 }
 
