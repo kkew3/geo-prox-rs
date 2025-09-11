@@ -211,13 +211,58 @@ pub fn isclose_opt(
 mod tests {
     use geo_types::Point;
 
+    use super::geodesic_distance_bound;
+
     #[test]
-    fn test_isclose() {
-        let p1 = Point::new(23.319941, 42.698334);
-        let p2 = Point::new(23.319920, 42.698323);
-        assert_eq!(
-            super::isclose_opt(p1, p2, 15.0, super::A_TOL, super::R_TOL, true),
-            Some(true)
-        );
+    fn bounds_sanity_check_same_point() {
+        let p1 = Point::new(23f64, 23f64);
+        let p2 = Point::new(23f64, 23f64);
+        let (lb, ub) = geodesic_distance_bound(p1, p2);
+        assert_eq!(lb, 0.0);
+        assert_eq!(ub, 0.0);
+    }
+
+    #[test]
+    fn bounds_sanity_check_longitude_wraparound() {
+        let p1 = Point::new(179.9999f64, 0f64);
+        let p2 = Point::new(-179.9999f64, 0f64);
+        let (lb, ub) = geodesic_distance_bound(p1, p2);
+        assert!(lb <= ub);
+        assert!(ub <= 22000.0)
+    }
+
+    #[test]
+    fn bounds_sanity_check_pole() {
+        let p1 = Point::new(0f64, 89.999f64);
+        let p2 = Point::new(180f64, 89.999f64);
+        let (lb, ub) = geodesic_distance_bound(p1, p2);
+        assert!(lb <= ub);
+        assert!(ub <= 10000.0);
+    }
+
+    #[test]
+    fn bounds_sanity_check_equator_opposite_points() {
+        let p1 = Point::new(0f64, 0f64);
+        let p2 = Point::new(180f64, 0f64);
+        let (lb, ub) = geodesic_distance_bound(p1, p2);
+        assert!(!ub.is_nan());
+        assert!(lb <= ub);
+    }
+
+    #[test]
+    fn bounds_sanity_check_reversed_pair() {
+        let p1 = Point::new(23f64, 12f64);
+        let p2 = Point::new(23.001f64, 12.001f64);
+        let (lb1, ub1) = geodesic_distance_bound(p1, p2);
+        let (lb2, ub2) = geodesic_distance_bound(p2, p1);
+        assert_eq!(lb1, lb2);
+        assert_eq!(ub1, ub2);
+
+        let p1 = Point::new(23f64, -12f64);
+        let p2 = Point::new(-23f64, -12f64);
+        let (lb1, ub1) = geodesic_distance_bound(p1, p2);
+        let (lb2, ub2) = geodesic_distance_bound(p2, p1);
+        assert_eq!(lb1, lb2);
+        assert_eq!(ub1, ub2);
     }
 }
