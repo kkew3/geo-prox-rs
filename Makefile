@@ -1,7 +1,7 @@
 .PHONY: test clean
 
 test:
-	cargo test
+	cargo test -r
 
 clean:
 	cargo clean
