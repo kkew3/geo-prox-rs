@@ -138,23 +138,8 @@ pub fn isclose(
     r_tol: f64,
     default: bool,
 ) -> bool {
-    let (lb, ub) = geodesic_distance_bound(p1, p2);
-
-    if lb > radius {
-        // If the lower bound already exeeds `radius`, `p1` and `p2` are
-        // definitely not close.
-        false
-    } else if ub <= radius {
-        true
-    } else if !err_is_tiny(ub - lb, ub, a_tol, r_tol) {
-        // The bound is too loose. We have to resort to the exact
-        // distance measure.
-        fallback_dist.distance(p1, p2) <= radius
-    } else {
-        // Since the bounds are tight enough, it's safe to follow the
-        // default decision. This branch should not be reached very often.
-        default
-    }
+    isclose_opt(p1, p2, radius, a_tol, r_tol, default)
+        .unwrap_or_else(|| fallback_dist.distance(p1, p2) <= radius)
 }
 
 /// Test whether two points (longitude, latitude) in degrees are within
