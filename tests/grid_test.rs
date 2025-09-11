@@ -42,7 +42,6 @@ fn bound_grid_test() {
 #[cfg(feature = "geo")]
 #[test]
 fn isclose_grid_test() {
-    let tol = 1e-8; // Floating point error tolerance.
     let lons = linspace(-180.0, 180.0, 37);
     let lats = linspace(-90.0, 90.0, 19);
     for lon in lons.iter().copied() {
