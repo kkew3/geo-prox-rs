@@ -30,3 +30,6 @@ debug
 
 # Zed
 #.zed/
+
+# macOS
+.DS_Store
